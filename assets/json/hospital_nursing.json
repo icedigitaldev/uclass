@@ -1,0 +1,43 @@
+{
+  "courseName": "Enfermería Hospitalaria",
+  "aspects": [
+    {
+      "name": "Aspecto Cognitivo",
+      "criteria": [
+        "Identifica con precisión la situación problemática del paciente asignado a su cuidado",
+        "Conoce y utiliza el método científico para solucionar problemas (PAE).",
+        "Fundamenta las acciones con conocimientos científicos.",
+        "Formula correctamente los diagnósticos de Enfermería.",
+        "Planifica las acciones de Enfermería de acuerdo a objetivos claros.",
+        "Identifica problemas que interfieren con la atención del paciente.",
+        "Da sugerencias válidas para mejorar la calidad de la atención de Enfermería.",
+        "Evalúa los resultados del plan de cuidados y realiza su retroalimentación."
+      ]
+    },
+    {
+      "name": "Aspecto Procedimental",
+      "criteria": [
+        "Ejecuta el recibo y entrega de turno.",
+        "Realiza cuidados sistematizados, teniendo en cuenta el holismo del ser humano.",
+        "Ejecuta las acciones planeadas y las modifica de acuerdo a la evolución del paciente.",
+        "Establece relación terapéutica con el paciente, facilitando la interacción enfermera – paciente.",
+        "Realiza informes escritos con precisión y terminología correcta.",
+        "Realiza los procedimientos aplicando medidas de bioseguridad.",
+        "Aplica las técnicas correctas a los procedimientos que realiza.",
+        "Utiliza el tiempo adecuado para ejecutar procedimientos.",
+        "Realiza registros de Enfermería aplicando la normativa institucional.",
+        "Busca oportunidades de valoración e investigativas, para mejorar las propuestas de cuidado."
+      ]
+    },
+    {
+      "name": "Aspecto Actitudinal",
+      "criteria": [
+        "Asiste puntualmente al servicio asignado, en el horario establecido y correctamente uniformado.",
+        "Brinda cuidados considerando la autonomía y dignidad de la persona. Tiene facilidad para establecer comunicación y relaciones humanas con el paciente.",
+        "Mantiene buenas relaciones humanas con los miembros del equipo de salud. Canaliza sus informes teniendo en cuenta las líneas de autoridad.",
+        "Demuestra capacidad para dar educación sobre aspectos de salud en forma individual y colectiva, y asume con responsabilidad el manejo de equipos y materiales.",
+        "Demuestra interés en la investigación de problemas relacionados con Enfermería, aplica los avances de la ciencia en la atención de Enfermería."
+      ]
+    }
+  ]
+}

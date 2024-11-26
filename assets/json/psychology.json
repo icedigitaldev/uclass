@@ -1,0 +1,105 @@
+{
+  "courseName": "Psicología",
+  "aspects": [
+    {
+      "name": "Asistencia",
+      "criteria": [
+        {
+          "points": 4,
+          "description": "Asiste puntualmente, sin faltas ni permisos. Permanece en su área de trabajo."
+        },
+        {
+          "points": 3,
+          "description": "Asistencia regular con permisos excepcionales. Permanece en su área."
+        },
+        {
+          "points": 2,
+          "description": "Ocasionales tardanzas/faltas con aviso. A veces se ausenta del área."
+        },
+        {
+          "points": 1,
+          "description": "Tardanzas/faltas sin aviso. Solicita permisos frecuentemente."
+        },
+        {
+          "points": 0,
+          "description": "Abandona frecuentemente el área de trabajo."
+        }
+      ]
+    },
+    {
+      "name": "Eficiencia",
+      "criteria": [
+        {
+          "points": 4,
+          "description": "Excelente dominio teórico-práctico. Muy activo y productivo."
+        },
+        {
+          "points": 3,
+          "description": "Buen dominio teórico-práctico. Activo y productivo."
+        },
+        {
+          "points": 2,
+          "description": "Dominio teórico-práctico regular. Ocasionalmente productivo."
+        },
+        {
+          "points": 1,
+          "description": "Deficiente dominio teórico-práctico. Poco productivo."
+        },
+        {
+          "points": 0,
+          "description": "Trabajo de calidad deficiente."
+        }
+      ]
+    },
+    {
+      "name": "Ética Profesional",
+      "criteria": [
+        {
+          "points": 4,
+          "description": "Excelente conducta profesional. Muy disciplinado y confidencial."
+        },
+        {
+          "points": 3,
+          "description": "Buena conducta profesional. Disciplinado y respetuoso."
+        },
+        {
+          "points": 2,
+          "description": "Ocasionalmente incumple normas. A veces indisciplinado."
+        },
+        {
+          "points": 1,
+          "description": "Frecuentemente incumple normas. Indisciplinado."
+        },
+        {
+          "points": 0,
+          "description": "No mantiene confidencialidad ni cuidado con la información."
+        }
+      ]
+    },
+    {
+      "name": "Iniciativa y Responsabilidad",
+      "criteria": [
+        {
+          "points": 4,
+          "description": "Alta iniciativa y responsabilidad. Autónomo y puntual."
+        },
+        {
+          "points": 3,
+          "description": "Buena iniciativa y responsabilidad. Requiere poca supervisión."
+        },
+        {
+          "points": 2,
+          "description": "Iniciativa ocasional. Necesita supervisión frecuente."
+        },
+        {
+          "points": 1,
+          "description": "Sin iniciativa. Incumple obligaciones frecuentemente."
+        },
+        {
+          "points": 0,
+          "description": "Prioriza intereses personales. Requiere supervisión constante."
+        }
+      ]
+    }
+  ]
+}

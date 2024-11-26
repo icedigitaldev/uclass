@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "257165992889",
+    "project_id": "uclass-ucss",
+    "storage_bucket": "uclass-ucss.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257165992889:android:c5bd3bdf1db0c622b14c68",
+        "android_client_info": {
+          "package_name": "com.tareas.uclass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKq5WkMIHB-8hmKwGWWNWbX_bWAGR3FLQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

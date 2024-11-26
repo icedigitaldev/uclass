@@ -1,0 +1,38 @@
+{
+  "courseName": "Enfermería Comunitaria",
+  "aspects": [
+    {
+      "name": "Aspecto Cognitivo",
+      "criteria": [
+        "Aplica conocimientos de la especialidad en la atención a la familia y comunidad.",
+        "Planifica cuidados de enfermería a la persona, familia y comunidad en base a las necesidades encontradas y priorizadas.",
+        "Fundamenta con base científica las actividades planificadas con la persona, familia y comunidad.",
+        "Evalúa la atención brindada y retroalimenta su planificación de las próximas intervenciones.",
+        "Realiza informes escritos y orales en forma clara y precisa. Empleando terminología adecuada."
+      ]
+    },
+    {
+      "name": "Aspecto Procedimental",
+      "criteria": [
+        "Ejecuta técnicas y procedimientos en la atención de individuo, familia y comunidad, aplicando medidas de bioseguridad.",
+        "Brinda cuidado de enfermería a la persona, familia y comunidad, según necesidades encontradas y priorizadas en los diferentes niveles de prevención.",
+        "Organiza su trabajo antes de la atención que realiza.",
+        "Evalúa el desarrollo de su intervención y retroalimenta las intervenciones necesarias.",
+        "Demuestra habilidad en el manejo adecuado de los formatos de las diferentes estrategias sanitarias.",
+        "Realiza actividades preventivas promocionales contempladas en el Modelo de Atención Integral de Salud por Ciclo de Vida.",
+        "Participa activa y efectivamente en las campañas de salud que programe o que determine el establecimiento de salud.",
+        "Participa en la ejecución del diagnóstico situacional de la comunidad."
+      ]
+    },
+    {
+      "name": "Aspecto Actitudinal",
+      "criteria": [
+        "Cuida de su presentación, arreglo personal y respeta el horario establecido para la práctica clínica.",
+        "Demuestra responsabilidad y puntualidad en la entrega de asignaciones, mantiene la iniciativa y respeta los valores éticos morales.",
+        "Mantiene buenas relaciones interpersonales con el equipo de salud, compañeros y miembros de la comunidad.",
+        "Reconoce sus errores y limitaciones, acepta sugerencias.",
+        "Demuestra empatía, compromiso social y del entorno."
+      ]
+    }
+  ]
+}
