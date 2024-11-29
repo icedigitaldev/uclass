@@ -12,6 +12,11 @@ dependencies:
   firebase_core: ^3.8.0
   firebase_auth: ^5.3.3
   cloud_firestore: ^5.5.0
+  pdf: ^3.11.1
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+  intl: ^0.20.1
+  universal_html: ^2.2.4
 
 dev_dependencies:
   flutter_test:
@@ -24,3 +29,4 @@ flutter:
   assets:
     - assets/images/
     - assets/json/
+    - assets/OpenSans-Regular.ttf

@@ -5,7 +5,6 @@ class TeacherService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Crear un nuevo profesor
   Future<void> createTeacher({
     required String nombre,
     required String email,
@@ -28,20 +27,29 @@ class TeacherService {
     }
   }
 
-  // Obtener profesores por curso
-  Future<QuerySnapshot> getTeachersByCourse(String courseName) async {
+  Future<List<Map<String, dynamic>>> getTeachersByCourse(String courseName) async {
     try {
-      return await _firestore
+      final QuerySnapshot querySnapshot = await _firestore
           .collection('users')
           .where('rol', isEqualTo: 'profesor')
           .where('curso', isEqualTo: courseName)
           .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['nombre'],
+          'email': data['email'],
+          'dni': data['dni'],
+          'password': data['password'],
+        };
+      }).toList();
     } catch (e) {
       throw Exception('Error al obtener profesores: $e');
     }
   }
 
-  // Obtener datos del profesor autenticado
   Future<Map<String, dynamic>?> getCurrentTeacherData() async {
     try {
       final user = _auth.currentUser;
@@ -56,4 +64,6 @@ class TeacherService {
       throw Exception('Error al obtener datos del profesor: $e');
     }
   }
+
+
 }

@@ -43,13 +43,9 @@ class AppRoutes {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Si está cargando, mostrar loading
+        // Si está cargando, mostrar WelcomeView sin botón
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
+          return const WelcomeView(showContinueButton: false);
         }
 
         // Si hay usuario autenticado
@@ -62,11 +58,7 @@ class AppRoutes {
             builder: (context, userSnapshot) {
               // Si está cargando los datos de Firestore
               if (userSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
+                return const WelcomeView(showContinueButton: false);
               }
 
               // Si existe el documento y es profesor
@@ -83,7 +75,7 @@ class AppRoutes {
         }
 
         // Si no hay usuario autenticado
-        return const WelcomeView();
+        return const WelcomeView(showContinueButton: true);
       },
     );
   }

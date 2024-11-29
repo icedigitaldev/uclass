@@ -8,7 +8,6 @@ class StudentService {
   CollectionReference get _studentsCollection => _firestore.collection('students');
   String get _currentTeacherId => _auth.currentUser?.uid ?? '';
 
-  // Crear un nuevo estudiante
   Future<void> createStudent({
     required String fullName,
     required String studentId,
@@ -35,32 +34,58 @@ class StudentService {
     }
   }
 
-  // Obtener estudiantes del profesor
-  Stream<QuerySnapshot> getTeacherStudents() {
+  Stream<List<Map<String, dynamic>>> getTeacherStudents() {
     try {
       return _studentsCollection
           .where('teacherId', isEqualTo: _currentTeacherId)
           .orderBy('fullName')
-          .snapshots();
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+          .map((doc) => {
+        ...doc.data() as Map<String, dynamic>,
+        'id': doc.id,
+      })
+          .toList());
     } catch (e) {
       throw 'Error al obtener los estudiantes: $e';
     }
   }
 
-  // Obtener estudiantes por curso
-  Stream<QuerySnapshot> getStudentsByCourse(String courseName) {
+  Stream<List<Map<String, dynamic>>> getStudentsByCourse(String courseName) {
     try {
       return _studentsCollection
           .where('teacherId', isEqualTo: _currentTeacherId)
           .where('courseName', isEqualTo: courseName)
           .orderBy('fullName')
-          .snapshots();
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+          .map((doc) => {
+        ...doc.data() as Map<String, dynamic>,
+        'id': doc.id,
+      })
+          .toList());
     } catch (e) {
       throw 'Error al obtener los estudiantes del curso: $e';
     }
   }
 
-  // Actualizar estudiante
+  Stream<List<Map<String, dynamic>>> getStudentsByTeacherId(String teacherId) {
+    try {
+      return _studentsCollection
+          .where('teacherId', isEqualTo: teacherId)
+          .orderBy('fullName')
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+          .map((doc) => {
+        ...doc.data() as Map<String, dynamic>,
+        'id': doc.id,
+      })
+          .toList());
+    } catch (e) {
+      throw 'Error al obtener los estudiantes del profesor: $e';
+    }
+  }
+
   Future<void> updateStudent({
     required String studentId,
     String? fullName,
@@ -72,7 +97,9 @@ class StudentService {
       final Map<String, dynamic> updateData = {};
 
       if (fullName != null) updateData['fullName'] = fullName;
-      if (internshipLocation != null) updateData['internshipLocation'] = internshipLocation;
+      if (internshipLocation != null) {
+        updateData['internshipLocation'] = internshipLocation;
+      }
       if (designatedArea != null) updateData['designatedArea'] = designatedArea;
       if (courseName != null) updateData['courseName'] = courseName;
 
@@ -82,7 +109,6 @@ class StudentService {
     }
   }
 
-  // Eliminar estudiante
   Future<void> deleteStudent(String studentId) async {
     try {
       await _studentsCollection.doc(studentId).delete();

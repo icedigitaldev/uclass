@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import '../dialogs/logout_confirmation_dialog.dart';
 import '../utils/logger.dart';
+import '../utils/pdf_generator.dart';
 import '../components/student_bottom_sheet.dart';
 import '../controllers/teacher_controller.dart';
 import '../controllers/student_controller.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/assessment_controller.dart';
+import '../widgets/student/search_download_bar.dart';
+import '../widgets/student/student_card.dart';
+import '../widgets/student/add_student_button.dart';
 
 class StudentListView extends StatefulWidget {
   const StudentListView({Key? key}) : super(key: key);
@@ -18,6 +23,8 @@ class _StudentListViewState extends State<StudentListView> {
   final TeacherController _teacherController = TeacherController();
   final StudentController _studentController = StudentController();
   final AuthController _authController = AuthController();
+  final AssessmentController _assessmentController = AssessmentController();
+  final PdfGenerator _pdfGenerator = PdfGenerator();
 
   final Map<String, Color> courseColors = {
     'Psicología': Colors.blue,
@@ -27,12 +34,35 @@ class _StudentListViewState extends State<StudentListView> {
 
   Color courseColor = Colors.green;
   String? teacherCourse;
+  String? adminViewTeacherId;
+  String? adminViewTeacherName;
   String _searchQuery = '';
+  bool _isDownloading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTeacherData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
+  }
+
+  Future<void> _loadInitialData() async {
+    final Map<String, dynamic>? args =
+    ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    if (args != null) {
+      setState(() {
+        adminViewTeacherId = args['teacherId'];
+        adminViewTeacherName = args['teacherName'];
+        teacherCourse = args['course'];
+        if (teacherCourse != null && courseColors.containsKey(teacherCourse)) {
+          courseColor = courseColors[teacherCourse]!;
+        }
+      });
+    } else {
+      await _loadTeacherData();
+    }
   }
 
   Future<void> _loadTeacherData() async {
@@ -47,7 +77,7 @@ class _StudentListViewState extends State<StudentListView> {
         });
       }
     } catch (e) {
-      print('Error loading teacher data: $e');
+      AppLogger.log('Error al cargar datos del profesor: $e', prefix: 'STUDENT_LIST:');
     }
   }
 
@@ -55,6 +85,56 @@ class _StudentListViewState extends State<StudentListView> {
     setState(() {
       _searchQuery = query.toLowerCase();
     });
+  }
+
+  Future<void> _handlePdfGeneration() async {
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      final data = await _assessmentController.getPdfData(
+        teacherId: adminViewTeacherId,
+      );
+      List<String> generatedPaths = [];
+
+      for (var student in data['students']) {
+        final pdfPath = await _pdfGenerator.generatePdf(
+          studentData: student,
+          teacherData: data['teacher'],
+        );
+        if (pdfPath.isNotEmpty) {
+          generatedPaths.add(pdfPath);
+        }
+      }
+
+      if (mounted && generatedPaths.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Se generaron ${generatedPaths.length} PDFs exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al generar los PDFs'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      AppLogger.log('Error al generar PDFs: $e', prefix: 'PDF_GENERATION:');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -65,23 +145,37 @@ class _StudentListViewState extends State<StudentListView> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: teacherCourse != null
-              ? const Icon(Icons.logout, color: Colors.black)
-              : const Icon(Icons.arrow_back, color: Colors.black),
+          icon: adminViewTeacherId != null
+              ? const Icon(Icons.arrow_back, color: Colors.black)
+              : const Icon(Icons.logout, color: Colors.black),
           onPressed: () {
-            if (teacherCourse != null) {
-              _authController.signOut(context);
-            } else {
+            if (adminViewTeacherId != null) {
               Navigator.pop(context);
+            } else {
+              // Mostrar el diálogo de confirmación
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return LogoutConfirmationDialog(
+                    onConfirm: () => _authController.signOut(context),
+                  );
+                },
+              );
             }
           },
         ),
         title: Text(
-          teacherCourse != null ? 'Alumnos de $teacherCourse' : 'Lista de Alumnos',
+          adminViewTeacherId != null
+              ? adminViewTeacherName ?? ''
+              : teacherCourse ?? 'Lista de Alumnos',
           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          _buildAddButton(context),
+          if (adminViewTeacherId == null)
+            AddStudentButton(
+              courseColor: courseColor,
+              onPressed: () => _showAddStudentBottomSheet(context),
+            ),
         ],
       ),
       body: SafeArea(
@@ -89,11 +183,20 @@ class _StudentListViewState extends State<StudentListView> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
           child: Column(
             children: [
-              _buildSearchAndDownloadBar(),
+              SearchDownloadBar(
+                searchController: _searchController,
+                onSearch: _filterStudents,
+                onDownload: _handlePdfGeneration,
+                isDownloading: _isDownloading,
+                courseColor: courseColor,
+                showDownload: true, // Habilitado para admin y profesor
+              ),
               const SizedBox(height: 16),
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: teacherCourse != null
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: adminViewTeacherId != null
+                      ? _studentController.getStudentsByTeacherId(adminViewTeacherId!)
+                      : teacherCourse != null
                       ? _studentController.getStudentsByCourse(teacherCourse!)
                       : _studentController.getTeacherStudents(),
                   builder: (context, snapshot) {
@@ -105,9 +208,8 @@ class _StudentListViewState extends State<StudentListView> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final students = snapshot.data?.docs ?? [];
-                    final filteredStudents = students.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
+                    final students = snapshot.data ?? [];
+                    final filteredStudents = students.where((data) {
                       return data['fullName'].toString().toLowerCase().contains(_searchQuery) ||
                           data['studentId'].toString().toLowerCase().contains(_searchQuery);
                     }).toList();
@@ -120,20 +222,27 @@ class _StudentListViewState extends State<StudentListView> {
 
                     return LayoutBuilder(
                       builder: (context, constraints) {
+                        double cardWidth = constraints.maxWidth;
+                        if (constraints.maxWidth > 1200) {
+                          cardWidth = (constraints.maxWidth - 32) / 3;
+                        } else if (constraints.maxWidth > 800) {
+                          cardWidth = (constraints.maxWidth - 16) / 2;
+                        }
+
                         return ListView(
                           children: [
                             Wrap(
                               spacing: 16,
                               runSpacing: 16,
-                              children: filteredStudents.map((doc) {
-                                final data = doc.data() as Map<String, dynamic>;
-                                return _buildStudentCard(
-                                  context,
-                                  data['fullName'] ?? '',
-                                  data['studentId'] ?? '',
-                                  data['internshipLocation'] ?? '',
-                                  data['designatedArea'] ?? '',
-                                  constraints,
+                              children: filteredStudents.map((data) {
+                                return StudentCard(
+                                  name: data['fullName'] ?? '',
+                                  studentId: data['studentId'] ?? '',
+                                  internshipSite: data['internshipLocation'] ?? '',
+                                  designatedArea: data['designatedArea'] ?? '',
+                                  courseColor: courseColor,
+                                  isAdminView: adminViewTeacherId != null,
+                                  cardWidth: cardWidth,
                                 );
                               }).toList(),
                             ),
@@ -151,67 +260,6 @@ class _StudentListViewState extends State<StudentListView> {
     );
   }
 
-  Widget _buildSearchAndDownloadBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _filterStudents,
-              decoration: const InputDecoration(
-                hintText: 'Buscar Estudiante',
-                border: InputBorder.none,
-                icon: Icon(Icons.search),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: courseColor,
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.download, color: Colors.white),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Descarga de Excel no implementada')),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAddButton(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        color: courseColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: IconButton(
-        icon: const Icon(Icons.person_add, color: Colors.white),
-        onPressed: () {
-          AppLogger.log('Botón de agregar alumno presionado', prefix: 'STUDENT_LIST:');
-          _showAddStudentBottomSheet(context);
-        },
-      ),
-    );
-  }
-
   void _showAddStudentBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -222,101 +270,6 @@ class _StudentListViewState extends State<StudentListView> {
       builder: (BuildContext context) {
         return StudentBottomSheet(course: teacherCourse);
       },
-    );
-  }
-
-  Widget _buildStudentCard(BuildContext context, String name, String studentId, String internshipSite, String designatedArea, BoxConstraints constraints) {
-    double cardWidth = constraints.maxWidth;
-    if (constraints.maxWidth > 1200) {
-      cardWidth = (constraints.maxWidth - 32) / 3;
-    } else if (constraints.maxWidth > 800) {
-      cardWidth = (constraints.maxWidth - 16) / 2;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/student_assessment',
-          arguments: name,
-        );
-      },
-      child: Container(
-        width: cardWidth,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: courseColor,
-                  child: Text(
-                    name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        studentId,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(Icons.local_hospital, 'Sede de Internado', internshipSite),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.work, 'Área Designada', designatedArea),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: courseColor),
-        const SizedBox(width: 8),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(color: Colors.black, fontSize: 16),
-              children: [
-                TextSpan(
-                  text: '$label: ',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(text: value),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 

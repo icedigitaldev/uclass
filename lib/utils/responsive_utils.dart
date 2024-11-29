@@ -23,6 +23,15 @@ class ResponsiveUtils {
   }
 
   static double getFixedBottomSheetMaxWidth() {
-    return 400; // Puedes ajustar este valor según tus preferencias
+    return 400;
+  }
+
+  static Widget wrapWithMaxWidth(Widget child) {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: child,
+      ),
+    );
   }
 }

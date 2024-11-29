@@ -13,6 +13,7 @@ class _StudentAssessmentViewState extends State<StudentAssessmentView> {
   final TeacherController _teacherController = TeacherController();
   String? teacherCourse;
   String? studentName;
+  String? studentId;
 
   @override
   void initState() {
@@ -20,10 +21,13 @@ class _StudentAssessmentViewState extends State<StudentAssessmentView> {
     _loadTeacherData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final args = ModalRoute.of(context)?.settings.arguments as String?;
-        setState(() {
-          studentName = args;
-        });
+        final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+        if (args != null) {
+          setState(() {
+            studentName = args['name'];
+            studentId = args['studentId'];
+          });
+        }
       }
     });
   }
@@ -39,7 +43,7 @@ class _StudentAssessmentViewState extends State<StudentAssessmentView> {
 
   @override
   Widget build(BuildContext context) {
-    if (studentName == null) {
+    if (studentName == null || studentId == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -97,12 +101,24 @@ class _StudentAssessmentViewState extends State<StudentAssessmentView> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              studentName!,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  studentName!,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'ID: $studentId',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -199,6 +215,7 @@ class _StudentAssessmentViewState extends State<StudentAssessmentView> {
               arguments: {
                 'aspectName': title,
                 'studentName': studentName,
+                'studentId': studentId,
                 'icon': icon,
                 'color': color,
               },

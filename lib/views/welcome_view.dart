@@ -5,7 +5,12 @@ import '../utils/responsive_utils.dart';
 import '../widgets/custom_app_bar.dart';
 
 class WelcomeView extends StatelessWidget {
-  const WelcomeView({super.key});
+  final bool showContinueButton;
+
+  const WelcomeView({
+    super.key,
+    this.showContinueButton = true
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,20 +51,27 @@ class WelcomeView extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const Spacer(),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: ResponsiveUtils.getFixedBottomSheetMaxWidth(),
+                if (showContinueButton)
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ResponsiveUtils.getFixedBottomSheetMaxWidth(),
+                      ),
+                      child: _buildButton(
+                        text: 'Continuar',
+                        onPressed: () {
+                          AppLogger.log('Navegando a LoginView', prefix: 'WELCOME:');
+                          Navigator.pushNamed(context, '/login');
+                        },
+                      ),
                     ),
-                    child: _buildButton(
-                      text: 'Continuar',
-                      onPressed: () {
-                        AppLogger.log('Navegando a LoginView', prefix: 'WELCOME:');
-                        Navigator.pushNamed(context, '/login');
-                      },
+                  )
+                else
+                  const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                     ),
                   ),
-                ),
                 const SizedBox(height: 48),
               ],
             ),

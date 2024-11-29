@@ -1,10 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/student_service.dart';
 
 class StudentController {
   final StudentService _studentService = StudentService();
 
-  // Crear un nuevo estudiante
   Future<void> createStudent({
     required String fullName,
     required String studentId,
@@ -25,17 +23,18 @@ class StudentController {
     }
   }
 
-  // Obtener estudiantes del profesor
-  Stream<QuerySnapshot> getTeacherStudents() {
+  Stream<List<Map<String, dynamic>>> getTeacherStudents() {
     return _studentService.getTeacherStudents();
   }
 
-  // Obtener estudiantes por curso
-  Stream<QuerySnapshot> getStudentsByCourse(String courseName) {
+  Stream<List<Map<String, dynamic>>> getStudentsByCourse(String courseName) {
     return _studentService.getStudentsByCourse(courseName);
   }
 
-  // Actualizar estudiante
+  Stream<List<Map<String, dynamic>>> getStudentsByTeacherId(String teacherId) {
+    return _studentService.getStudentsByTeacherId(teacherId);
+  }
+
   Future<void> updateStudent({
     required String studentId,
     String? fullName,
@@ -56,7 +55,6 @@ class StudentController {
     }
   }
 
-  // Eliminar estudiante
   Future<void> deleteStudent(String studentId) async {
     try {
       await _studentService.deleteStudent(studentId);
