@@ -89,6 +89,7 @@ class StudentService {
   Future<void> updateStudent({
     required String studentId,
     String? fullName,
+    String? studentIdUpdate,
     String? internshipLocation,
     String? designatedArea,
     String? courseName,
@@ -97,6 +98,7 @@ class StudentService {
       final Map<String, dynamic> updateData = {};
 
       if (fullName != null) updateData['fullName'] = fullName;
+      if (studentIdUpdate != null) updateData['studentId'] = studentIdUpdate;
       if (internshipLocation != null) {
         updateData['internshipLocation'] = internshipLocation;
       }
@@ -114,6 +116,23 @@ class StudentService {
       await _studentsCollection.doc(studentId).delete();
     } catch (e) {
       throw 'Error al eliminar el estudiante: $e';
+    }
+  }
+
+  Future<void> deleteAllStudents() async {
+    try {
+      final QuerySnapshot studentsSnapshot = await _studentsCollection
+          .where('teacherId', isEqualTo: _currentTeacherId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in studentsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+    } catch (e) {
+      throw 'Error al eliminar todos los estudiantes: $e';
     }
   }
 }

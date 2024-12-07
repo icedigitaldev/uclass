@@ -8,6 +8,9 @@ class StudentCard extends StatelessWidget {
   final Color courseColor;
   final bool isAdminView;
   final double cardWidth;
+  final String id;
+  final Function(String) onEdit;
+  final Function(String) onDelete;
 
   const StudentCard({
     super.key,
@@ -18,6 +21,9 @@ class StudentCard extends StatelessWidget {
     required this.courseColor,
     required this.isAdminView,
     required this.cardWidth,
+    required this.id,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -40,7 +46,7 @@ class StudentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           const SizedBox(height: 16),
           _buildInfoRow(Icons.local_hospital, 'Sede de Internado', internshipSite),
           const SizedBox(height: 8),
@@ -68,34 +74,82 @@ class StudentCard extends StatelessWidget {
     return card;
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: courseColor,
-          child: Text(
-            name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHeader(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Stack(
+        children: [
+          Row(
             children: [
-              Text(
-                name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              CircleAvatar(
+                backgroundColor: courseColor,
+                child: Text(
+                  name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                studentId,
-                style: TextStyle(color: Colors.grey[600]),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    studentId,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
               ),
             ],
           ),
-        ),
-      ],
+          Positioned(
+            top: -10,
+            right: -10,
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onSelected: (String value) {
+                switch (value) {
+                  case 'edit':
+                    onEdit(id);
+                    break;
+                  case 'delete':
+                    onDelete(id);
+                    break;
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('Editar'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Eliminar'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

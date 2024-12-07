@@ -5,10 +5,16 @@ import '../controllers/student_controller.dart';
 
 class StudentBottomSheet extends StatefulWidget {
   final String? course;
+  final bool isEditing;
+  final String? studentId;
+  final Map<String, dynamic>? initialData;
 
   const StudentBottomSheet({
     super.key,
     required this.course,
+    this.isEditing = false,
+    this.studentId,
+    this.initialData,
   });
 
   @override
@@ -23,7 +29,18 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
   final TextEditingController _areaController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _addStudent() async {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEditing && widget.initialData != null) {
+      _nameController.text = widget.initialData!['fullName'] ?? '';
+      _idController.text = widget.initialData!['studentId'] ?? '';
+      _siteController.text = widget.initialData!['internshipLocation'] ?? '';
+      _areaController.text = widget.initialData!['designatedArea'] ?? '';
+    }
+  }
+
+  Future<void> _handleSubmit() async {
     if (_nameController.text.isEmpty ||
         _idController.text.isEmpty ||
         _siteController.text.isEmpty ||
@@ -38,24 +55,45 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
     setState(() => _isLoading = true);
 
     try {
-      await _studentController.createStudent(
-        fullName: _nameController.text,
-        studentId: _idController.text,
-        internshipLocation: _siteController.text,
-        designatedArea: _areaController.text,
-        courseName: widget.course!,
-      );
+      if (widget.isEditing) {
+        await _studentController.updateStudent(
+          studentId: widget.studentId!,
+          studentIdUpdate: _idController.text,
+          fullName: _nameController.text,
+          internshipLocation: _siteController.text,
+          designatedArea: _areaController.text,
+        );
+      } else {
+        await _studentController.createStudent(
+          fullName: _nameController.text,
+          studentId: _idController.text,
+          internshipLocation: _siteController.text,
+          designatedArea: _areaController.text,
+          courseName: widget.course!,
+        );
+      }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Estudiante agregado exitosamente')),
+          SnackBar(
+            content: Text(widget.isEditing
+                ? 'Estudiante actualizado exitosamente'
+                : 'Estudiante agregado exitosamente'
+            ),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar estudiante: $e')),
+          SnackBar(
+            content: Text(widget.isEditing
+                ? 'Error al actualizar estudiante: $e'
+                : 'Error al agregar estudiante: $e'
+            ),
+          ),
         );
       }
     } finally {
@@ -100,9 +138,9 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Agregar Alumno',
-                  style: TextStyle(
+                Text(
+                  widget.isEditing ? 'Editar Alumno' : 'Agregar Alumno',
+                  style: const TextStyle(
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -114,7 +152,9 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
                   hintText: 'Nombre completo',
                   prefixIcon: Icons.person_outline,
                   onChanged: (value) {
-                    AppLogger.log('Nombre del alumno: $value', prefix: 'ADD_STUDENT:');
+                    AppLogger.log('Nombre del alumno: $value',
+                        prefix: widget.isEditing ? 'EDIT_STUDENT:' : 'ADD_STUDENT:'
+                    );
                   },
                 ),
                 const SizedBox(height: 16.0),
@@ -123,7 +163,9 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
                   hintText: 'ID Estudiante',
                   prefixIcon: Icons.school_outlined,
                   onChanged: (value) {
-                    AppLogger.log('ID del estudiante: $value', prefix: 'ADD_STUDENT:');
+                    AppLogger.log('ID del estudiante: $value',
+                        prefix: widget.isEditing ? 'EDIT_STUDENT:' : 'ADD_STUDENT:'
+                    );
                   },
                 ),
                 const SizedBox(height: 16.0),
@@ -132,7 +174,9 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
                   hintText: 'Sede de Internado',
                   prefixIcon: Icons.local_hospital_outlined,
                   onChanged: (value) {
-                    AppLogger.log('Sede de Internado: $value', prefix: 'ADD_STUDENT:');
+                    AppLogger.log('Sede de Internado: $value',
+                        prefix: widget.isEditing ? 'EDIT_STUDENT:' : 'ADD_STUDENT:'
+                    );
                   },
                 ),
                 const SizedBox(height: 16.0),
@@ -141,13 +185,15 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
                   hintText: 'Área Designada',
                   prefixIcon: Icons.work_outline,
                   onChanged: (value) {
-                    AppLogger.log('Área Designada: $value', prefix: 'ADD_STUDENT:');
+                    AppLogger.log('Área Designada: $value',
+                        prefix: widget.isEditing ? 'EDIT_STUDENT:' : 'ADD_STUDENT:'
+                    );
                   },
                 ),
                 const SizedBox(height: 24.0),
                 _buildButton(
-                  text: 'Agregar Alumno',
-                  onPressed: _isLoading ? null : _addStudent,
+                  text: widget.isEditing ? 'Actualizar Alumno' : 'Agregar Alumno',
+                  onPressed: _isLoading ? null : _handleSubmit,
                   isLoading: _isLoading,
                 ),
                 const SizedBox(height: 24.0),

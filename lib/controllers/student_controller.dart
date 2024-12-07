@@ -1,4 +1,5 @@
 import '../services/student_service.dart';
+import '../utils/logger.dart';
 
 class StudentController {
   final StudentService _studentService = StudentService();
@@ -38,6 +39,7 @@ class StudentController {
   Future<void> updateStudent({
     required String studentId,
     String? fullName,
+    String? studentIdUpdate,
     String? internshipLocation,
     String? designatedArea,
     String? courseName,
@@ -46,6 +48,7 @@ class StudentController {
       await _studentService.updateStudent(
         studentId: studentId,
         fullName: fullName,
+        studentIdUpdate: studentIdUpdate,
         internshipLocation: internshipLocation,
         designatedArea: designatedArea,
         courseName: courseName,
@@ -59,6 +62,16 @@ class StudentController {
     try {
       await _studentService.deleteStudent(studentId);
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAllStudents() async {
+    try {
+      await _studentService.deleteAllStudents();
+      AppLogger.log('Todos los estudiantes eliminados', prefix: 'STUDENT_CONTROLLER:');
+    } catch (e) {
+      AppLogger.log('Error al eliminar todos los estudiantes: $e', prefix: 'STUDENT_CONTROLLER:');
       rethrow;
     }
   }

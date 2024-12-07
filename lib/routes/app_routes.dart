@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../views/welcome_view.dart';
 import '../views/home_view.dart';
 import '../views/course_details_view.dart';
@@ -10,6 +8,7 @@ import '../views/login_view.dart';
 import '../views/psychology_assessment_view.dart';
 import '../views/community_nursing_assessment_view.dart';
 import '../views/hospital_nursing_assessment_view.dart';
+import '../controllers/auth_controller.dart';
 
 class AppRoutes {
   static const String welcomeView = '/welcome';
@@ -40,42 +39,14 @@ class AppRoutes {
   }
 
   static Widget _handleAuthState() {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return StreamBuilder<Widget>(
+      stream: AuthController().handleAuthState(),
       builder: (context, snapshot) {
-        // Si está cargando, mostrar WelcomeView sin botón
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const WelcomeView(showContinueButton: false);
         }
 
-        // Si hay usuario autenticado
-        if (snapshot.hasData && snapshot.data != null) {
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(snapshot.data!.uid)
-                .get(),
-            builder: (context, userSnapshot) {
-              // Si está cargando los datos de Firestore
-              if (userSnapshot.connectionState == ConnectionState.waiting) {
-                return const WelcomeView(showContinueButton: false);
-              }
-
-              // Si existe el documento y es profesor
-              if (userSnapshot.hasData &&
-                  userSnapshot.data!.exists &&
-                  (userSnapshot.data!.data() as Map<String, dynamic>)['rol'] == 'profesor') {
-                return const StudentListView();
-              }
-
-              // Si no existe documento o no es profesor (admin)
-              return const HomeView();
-            },
-          );
-        }
-
-        // Si no hay usuario autenticado
-        return const WelcomeView(showContinueButton: true);
+        return snapshot.data ?? const WelcomeView(showContinueButton: true);
       },
     );
   }

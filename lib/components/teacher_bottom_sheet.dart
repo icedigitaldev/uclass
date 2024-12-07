@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import '../utils/responsive_utils.dart';
 import '../widgets/bottom_sheet/input_custom.dart';
 import '../controllers/teacher_controller.dart';
+import '../utils/logger.dart';
 
 class TeacherBottomSheet extends StatefulWidget {
   final String curso;
+  final Map<String, dynamic>? teacher; // Opcional para modo edición
 
-  const TeacherBottomSheet({super.key, required this.curso});
+  const TeacherBottomSheet({
+    super.key,
+    required this.curso,
+    this.teacher, // Será null para crear nuevo profesor
+  });
 
   @override
   State<TeacherBottomSheet> createState() => _TeacherBottomSheetState();
@@ -19,6 +25,19 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
   final TextEditingController passwordController = TextEditingController();
   final TeacherController _teacherController = TeacherController();
   bool _isLoading = false;
+  bool _isEditMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isEditMode = widget.teacher != null;
+    if (_isEditMode) {
+      nombreController.text = widget.teacher!['name'];
+      emailController.text = widget.teacher!['email'];
+      dniController.text = widget.teacher!['dni'];
+      passwordController.text = widget.teacher!['password'];
+    }
+  }
 
   @override
   void dispose() {
@@ -52,9 +71,9 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Agregar Profesor',
-                  style: TextStyle(
+                Text(
+                  _isEditMode ? 'Editar Profesor' : 'Agregar Profesor',
+                  style: const TextStyle(
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -94,9 +113,8 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
                 ),
                 const SizedBox(height: 24.0),
                 InputCustom.buildButton(
-                  text: 'Agregar Profesor',
+                  text: _isEditMode ? 'Actualizar Profesor' : 'Agregar Profesor',
                   onPressed: _isLoading ? null : () async {
-                    // Validar campos
                     if (nombreController.text.isEmpty ||
                         emailController.text.isEmpty ||
                         dniController.text.isEmpty ||
@@ -110,7 +128,6 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
                       return;
                     }
 
-                    // Validar DNI
                     if (dniController.text.length != 8) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -121,7 +138,6 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
                       return;
                     }
 
-                    // Validar contraseña
                     if (passwordController.text.length < 6) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -134,31 +150,59 @@ class _TeacherBottomSheetState extends State<TeacherBottomSheet> {
 
                     setState(() => _isLoading = true);
 
-                    await _teacherController.registerTeacher(
-                      nombre: nombreController.text.trim(),
-                      email: emailController.text.trim(),
-                      dni: dniController.text.trim(),
-                      password: passwordController.text,
-                      curso: widget.curso,
-                      onSuccess: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profesor registrado exitosamente'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                      onError: (error) {
-                        setState(() => _isLoading = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(error),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      },
-                    );
+                    if (_isEditMode) {
+                      await _teacherController.updateTeacher(
+                        teacherId: widget.teacher!['id'],
+                        nombre: nombreController.text.trim(),
+                        email: emailController.text.trim(),
+                        dni: dniController.text.trim(),
+                        password: passwordController.text,
+                        onSuccess: () {
+                          Navigator.pop(context, true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Profesor actualizado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        onError: (error) {
+                          setState(() => _isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        },
+                      );
+                    } else {
+                      await _teacherController.registerTeacher(
+                        nombre: nombreController.text.trim(),
+                        email: emailController.text.trim(),
+                        dni: dniController.text.trim(),
+                        password: passwordController.text,
+                        curso: widget.curso,
+                        onSuccess: () {
+                          Navigator.pop(context, true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Profesor registrado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        onError: (error) {
+                          setState(() => _isLoading = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        },
+                      );
+                    }
                   },
                   isLoading: _isLoading,
                 ),

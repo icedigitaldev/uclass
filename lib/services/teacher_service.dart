@@ -20,6 +20,7 @@ class TeacherService {
         'password': password,
         'rol': 'profesor',
         'curso': curso,
+        'isActive': true, // Agregamos isActive por defecto
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -43,6 +44,7 @@ class TeacherService {
           'email': data['email'],
           'dni': data['dni'],
           'password': data['password'],
+          'isActive': data['isActive'] ?? true, // Incluimos isActive en el mapeo
         };
       }).toList();
     } catch (e) {
@@ -65,5 +67,33 @@ class TeacherService {
     }
   }
 
+  Future<void> updateTeacherStatus(String teacherId, bool isActive) async {
+    try {
+      await _firestore.collection('users').doc(teacherId).update({
+        'isActive': isActive,
+      });
+    } catch (e) {
+      throw Exception('Error al actualizar estado del profesor: $e');
+    }
+  }
 
+  Future<void> updateTeacher({
+    required String teacherId,
+    required String nombre,
+    required String email,
+    required String dni,
+    required String password,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(teacherId).update({
+        'nombre': nombre,
+        'email': email,
+        'dni': dni,
+        'password': password,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error al actualizar profesor: $e');
+    }
+  }
 }

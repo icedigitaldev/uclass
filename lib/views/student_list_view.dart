@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../dialogs/logout_confirmation_dialog.dart';
+import '../dialogs/delete_confirmation_dialog.dart';
 import '../utils/logger.dart';
 import '../utils/pdf_generator.dart';
 import '../components/student_bottom_sheet.dart';
@@ -32,12 +34,15 @@ class _StudentListViewState extends State<StudentListView> {
     'Enfermería Hospitalaria': Colors.orange,
   };
 
+  StreamSubscription? _studentSubscription;
+  List<Map<String, dynamic>> _cachedStudents = [];
   Color courseColor = Colors.green;
   String? teacherCourse;
   String? adminViewTeacherId;
   String? adminViewTeacherName;
   String _searchQuery = '';
   bool _isDownloading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -63,6 +68,39 @@ class _StudentListViewState extends State<StudentListView> {
     } else {
       await _loadTeacherData();
     }
+    _setupStudentStream();
+  }
+
+  void _setupStudentStream() {
+    _studentSubscription?.cancel();
+
+    final Stream<List<Map<String, dynamic>>> stream;
+    if (adminViewTeacherId != null) {
+      stream = _studentController.getStudentsByTeacherId(adminViewTeacherId!);
+    } else if (teacherCourse != null) {
+      stream = _studentController.getStudentsByCourse(teacherCourse!);
+    } else {
+      stream = _studentController.getTeacherStudents();
+    }
+
+    _studentSubscription = stream.listen(
+          (students) {
+        if (mounted) {
+          setState(() {
+            _cachedStudents = students;
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (error) {
+        AppLogger.log('Error en el stream de estudiantes: $error', prefix: 'STUDENT_LIST:');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      },
+    );
   }
 
   Future<void> _loadTeacherData() async {
@@ -81,10 +119,229 @@ class _StudentListViewState extends State<StudentListView> {
     }
   }
 
-  void _filterStudents(String query) {
-    setState(() {
-      _searchQuery = query.toLowerCase();
-    });
+  void _handleEditStudent(String id) {
+    final student = _cachedStudents.firstWhere((s) => s['id'] == id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StudentBottomSheet(
+          course: teacherCourse,
+          isEditing: true,
+          studentId: id,
+          initialData: student,
+        );
+      },
+    );
+  }
+
+  void _handleDeleteStudent(String id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return DeleteConfirmationDialog(
+          onConfirm: () async {
+            try {
+              await _studentController.deleteStudent(id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Estudiante eliminado correctamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            } catch (e) {
+              AppLogger.log('Error al eliminar estudiante: $e', prefix: 'STUDENT_LIST:');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Error al eliminar el estudiante'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _handleDeleteAll() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return DeleteConfirmationDialog(
+          onConfirm: () async {
+            try {
+              await _studentController.deleteAllStudents();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Todos los estudiantes han sido eliminados'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            } catch (e) {
+              AppLogger.log('Error al eliminar todos los estudiantes: $e', prefix: 'STUDENT_LIST:');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Error al eliminar los estudiantes'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+          isGlobalDelete: true,
+        );
+      },
+    );
+  }
+
+  List<Map<String, dynamic>> _getFilteredStudents() {
+    if (_searchQuery.isEmpty) return _cachedStudents;
+
+    return _cachedStudents.where((data) {
+      return data['fullName'].toString().toLowerCase().contains(_searchQuery) ||
+          data['studentId'].toString().toLowerCase().contains(_searchQuery);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: adminViewTeacherId != null
+              ? const Icon(Icons.arrow_back, color: Colors.black)
+              : const Icon(Icons.logout, color: Colors.black),
+          onPressed: () {
+            if (adminViewTeacherId != null) {
+              Navigator.pop(context);
+            } else {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return LogoutConfirmationDialog(
+                    onConfirm: () => _authController.signOut(context),
+                  );
+                },
+              );
+            }
+          },
+        ),
+        title: Text(
+          adminViewTeacherId != null
+              ? adminViewTeacherName ?? ''
+              : teacherCourse ?? 'Lista de Alumnos',
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          if (adminViewTeacherId == null) ...[
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: Colors.red),
+              iconSize: 32.0,
+              onPressed: _handleDeleteAll,
+            ),
+            AddStudentButton(
+              courseColor: courseColor,
+              onPressed: () => _showAddStudentBottomSheet(context),
+            ),
+          ],
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+          child: Column(
+            children: [
+              SearchDownloadBar(
+                searchController: _searchController,
+                onSearch: (query) => setState(() => _searchQuery = query.toLowerCase()),
+                onDownload: _handlePdfGeneration,
+                isDownloading: _isDownloading,
+                courseColor: courseColor,
+                showDownload: true,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildStudentList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudentList() {
+    final filteredStudents = _getFilteredStudents();
+
+    if (filteredStudents.isEmpty) {
+      return const Center(
+        child: Text('No se encontraron estudiantes'),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double cardWidth = constraints.maxWidth;
+        if (constraints.maxWidth > 1200) {
+          cardWidth = (constraints.maxWidth - 32) / 3;
+        } else if (constraints.maxWidth > 800) {
+          cardWidth = (constraints.maxWidth - 16) / 2;
+        }
+
+        return ListView(
+          children: [
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: filteredStudents.map((data) {
+                return StudentCard(
+                  name: data['fullName'] ?? '',
+                  studentId: data['studentId'] ?? '',
+                  internshipSite: data['internshipLocation'] ?? '',
+                  designatedArea: data['designatedArea'] ?? '',
+                  courseColor: courseColor,
+                  isAdminView: adminViewTeacherId != null,
+                  cardWidth: cardWidth,
+                  id: data['id'] ?? '',
+                  onEdit: _handleEditStudent,
+                  onDelete: _handleDeleteStudent,
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddStudentBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StudentBottomSheet(course: teacherCourse);
+      },
+    );
   }
 
   Future<void> _handlePdfGeneration() async {
@@ -119,6 +376,7 @@ class _StudentListViewState extends State<StudentListView> {
         );
       }
     } catch (e) {
+      AppLogger.log('Error al generar PDFs: $e', prefix: 'PDF_GENERATION:');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -127,7 +385,6 @@ class _StudentListViewState extends State<StudentListView> {
           ),
         );
       }
-      AppLogger.log('Error al generar PDFs: $e', prefix: 'PDF_GENERATION:');
     } finally {
       if (mounted) {
         setState(() {
@@ -138,144 +395,9 @@ class _StudentListViewState extends State<StudentListView> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: adminViewTeacherId != null
-              ? const Icon(Icons.arrow_back, color: Colors.black)
-              : const Icon(Icons.logout, color: Colors.black),
-          onPressed: () {
-            if (adminViewTeacherId != null) {
-              Navigator.pop(context);
-            } else {
-              // Mostrar el diálogo de confirmación
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return LogoutConfirmationDialog(
-                    onConfirm: () => _authController.signOut(context),
-                  );
-                },
-              );
-            }
-          },
-        ),
-        title: Text(
-          adminViewTeacherId != null
-              ? adminViewTeacherName ?? ''
-              : teacherCourse ?? 'Lista de Alumnos',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          if (adminViewTeacherId == null)
-            AddStudentButton(
-              courseColor: courseColor,
-              onPressed: () => _showAddStudentBottomSheet(context),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-          child: Column(
-            children: [
-              SearchDownloadBar(
-                searchController: _searchController,
-                onSearch: _filterStudents,
-                onDownload: _handlePdfGeneration,
-                isDownloading: _isDownloading,
-                courseColor: courseColor,
-                showDownload: true, // Habilitado para admin y profesor
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: adminViewTeacherId != null
-                      ? _studentController.getStudentsByTeacherId(adminViewTeacherId!)
-                      : teacherCourse != null
-                      ? _studentController.getStudentsByCourse(teacherCourse!)
-                      : _studentController.getTeacherStudents(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final students = snapshot.data ?? [];
-                    final filteredStudents = students.where((data) {
-                      return data['fullName'].toString().toLowerCase().contains(_searchQuery) ||
-                          data['studentId'].toString().toLowerCase().contains(_searchQuery);
-                    }).toList();
-
-                    if (filteredStudents.isEmpty) {
-                      return const Center(
-                        child: Text('No se encontraron estudiantes'),
-                      );
-                    }
-
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        double cardWidth = constraints.maxWidth;
-                        if (constraints.maxWidth > 1200) {
-                          cardWidth = (constraints.maxWidth - 32) / 3;
-                        } else if (constraints.maxWidth > 800) {
-                          cardWidth = (constraints.maxWidth - 16) / 2;
-                        }
-
-                        return ListView(
-                          children: [
-                            Wrap(
-                              spacing: 16,
-                              runSpacing: 16,
-                              children: filteredStudents.map((data) {
-                                return StudentCard(
-                                  name: data['fullName'] ?? '',
-                                  studentId: data['studentId'] ?? '',
-                                  internshipSite: data['internshipLocation'] ?? '',
-                                  designatedArea: data['designatedArea'] ?? '',
-                                  courseColor: courseColor,
-                                  isAdminView: adminViewTeacherId != null,
-                                  cardWidth: cardWidth,
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showAddStudentBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return StudentBottomSheet(course: teacherCourse);
-      },
-    );
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
+    _studentSubscription?.cancel();
     super.dispose();
   }
 }
