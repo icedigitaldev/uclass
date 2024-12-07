@@ -1,3 +1,4 @@
+// auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
@@ -24,58 +25,52 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final QuerySnapshot querySnapshot = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
+      // Primero intentamos iniciar sesión directamente con Firebase Auth
+      try {
+        return await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } catch (authError) {
+        // Si falla, verificamos si es un usuario en Firestore
+        final QuerySnapshot querySnapshot = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final userData = querySnapshot.docs.first.data() as Map<String, dynamic>;
+        if (querySnapshot.docs.isNotEmpty) {
+          final userData = querySnapshot.docs.first.data() as Map<String, dynamic>;
 
-        // Verificar si el usuario es profesor y está desactivado
-        if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
-          AppLogger.log('Intento de acceso de profesor desactivado: $email', prefix: 'AUTH:');
-          throw 'Tu cuenta ha sido desactivada. Contacta al administrador.';
-        }
+          // Verificar si el usuario es profesor y está desactivado
+          if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
+            throw 'Tu cuenta ha sido desactivada. Contacta al administrador.';
+          }
 
-        if (userData['password'] == password) {
-          try {
-            return await _auth.signInWithEmailAndPassword(
-              email: email,
-              password: password,
-            );
-          } catch (authError) {
-            AppLogger.log('Creando usuario en Auth: $email', prefix: 'AUTH:');
-            final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-              email: email,
-              password: password,
-            );
+          if (userData['password'] == password) {
+            try {
+              return await _auth.signInWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+            } catch (e) {
+              final UserCredential userCredential =
+              await _auth.createUserWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
 
-            final batch = _firestore.batch();
-            final newUserRef = _firestore.collection('users').doc(userCredential.user!.uid);
-            batch.set(newUserRef, {
-              ...userData,
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
+              await _firestore.collection('users').doc(userCredential.user!.uid).set({
+                ...userData,
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
 
-            if (querySnapshot.docs.first.id != userCredential.user!.uid) {
-              batch.delete(querySnapshot.docs.first.reference);
+              return userCredential;
             }
-
-            await batch.commit();
-            return userCredential;
+          } else {
+            throw 'Contraseña incorrecta';
           }
         } else {
-          throw 'Contraseña incorrecta';
-        }
-      } else {
-        try {
-          return await _auth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-        } catch (e) {
-          throw 'Usuario no encontrado';
+          throw authError;
         }
       }
     } catch (e) {

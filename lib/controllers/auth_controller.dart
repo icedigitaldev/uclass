@@ -21,24 +21,33 @@ class AuthController {
         return const WelcomeView(showContinueButton: true);
       }
 
-      final userSnapshot = await _authService.getUserData(user.uid);
+      try {
+        final userSnapshot = await _authService.getUserData(user.uid);
 
-      if (userSnapshot != null && userSnapshot.exists) {
+        // Si no existe documento en Firestore, asumimos que es admin
+        if (userSnapshot == null || !userSnapshot.exists) {
+          AppLogger.log('Acceso de administrador: ${user.email}', prefix: 'AUTH:');
+          return const HomeView();
+        }
+
         final userData = userSnapshot.data() as Map<String, dynamic>;
 
-        // Verificar si el usuario es profesor y está desactivado
-        if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
-          AppLogger.log('Profesor desactivado intentando acceder: ${user.email}', prefix: 'AUTH:');
-          await _authService.signOut();
-          return const WelcomeView(showContinueButton: true);
-        }
-
-        if (userData['rol'] == 'profesor' && userData['isActive'] == true) {
+        // Verificar si el usuario es profesor
+        if (userData['rol'] == 'profesor') {
+          if (userData['isActive'] == false) {
+            AppLogger.log('Profesor desactivado intentando acceder: ${user.email}', prefix: 'AUTH:');
+            await _authService.signOut();
+            return const WelcomeView(showContinueButton: true);
+          }
           return const StudentListView();
         }
-      }
 
-      return const HomeView();
+        return const HomeView();
+      } catch (e) {
+        AppLogger.log('Error en handleAuthState: $e', prefix: 'AUTH_ERROR:');
+        await _authService.signOut();
+        return const WelcomeView(showContinueButton: true);
+      }
     });
   }
 
@@ -59,25 +68,35 @@ class AuthController {
       );
 
       if (userCredential.user != null) {
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .get();
+        try {
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .get();
 
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-
-          if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
-            await _authService.signOut();
-            setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+          // Si no existe documento en Firestore, asumimos que es admin
+          if (!userDoc.exists) {
+            AppLogger.log('Login exitoso de administrador: ${email}', prefix: 'AUTH:');
+            Navigator.pushReplacementNamed(context, '/home');
             return;
           }
 
-          if (userData['rol'] == 'profesor' && userData['isActive'] == true) {
+          final userData = userDoc.data()!;
+
+          if (userData['rol'] == 'profesor') {
+            if (userData['isActive'] == false) {
+              await _authService.signOut();
+              setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+              return;
+            }
             Navigator.pushReplacementNamed(context, '/student_list');
-          } else {
-            Navigator.pushReplacementNamed(context, '/home');
+            return;
           }
+
+          Navigator.pushReplacementNamed(context, '/home');
+        } catch (e) {
+          AppLogger.log('Error al obtener datos de usuario: $e', prefix: 'AUTH_ERROR:');
+          setError('Error al obtener datos de usuario');
         }
       }
     } catch (e) {
@@ -92,21 +111,33 @@ class AuthController {
     if (_authService.isAuthenticated) {
       final user = _authService.currentUser;
       if (user != null) {
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        try {
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .get();
 
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-
-          if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
-            await _authService.signOut();
+          // Si no existe documento en Firestore, asumimos que es admin
+          if (!userDoc.exists) {
+            Navigator.pushReplacementNamed(context, '/home');
             return;
           }
 
-          if (userData['rol'] == 'profesor' && userData['isActive'] == true) {
+          final userData = userDoc.data()!;
+
+          if (userData['rol'] == 'profesor') {
+            if (userData['isActive'] == false) {
+              await _authService.signOut();
+              return;
+            }
             Navigator.pushReplacementNamed(context, '/student_list');
-          } else {
-            Navigator.pushReplacementNamed(context, '/home');
+            return;
           }
+
+          Navigator.pushReplacementNamed(context, '/home');
+        } catch (e) {
+          AppLogger.log('Error en checkAuthState: $e', prefix: 'AUTH_ERROR:');
+          await _authService.signOut();
         }
       }
     }
@@ -117,6 +148,7 @@ class AuthController {
       await _authService.signOut();
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
+      AppLogger.log('Error en signOut: $e', prefix: 'AUTH_ERROR:');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al cerrar sesión: $e')),
       );
