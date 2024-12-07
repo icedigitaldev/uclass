@@ -28,7 +28,7 @@ class WelcomeView extends StatelessWidget {
               children: [
                 const Spacer(),
                 Image.asset(
-                  'assets/images/hacker.png',
+                  'assets/images/logo.png',
                   height: 200,
                 ),
                 const SizedBox(height: 48),
