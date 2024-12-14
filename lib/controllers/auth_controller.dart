@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-import '../views/welcome_view.dart';
-import '../views/student_list_view.dart';
-import '../views/home_view.dart';
 import '../utils/logger.dart';
 
 class AuthController {
@@ -13,42 +8,37 @@ class AuthController {
   AuthController._internal();
 
   final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<Widget> handleAuthState() {
-    return _authService.authStateChanges.asyncMap((User? user) async {
-      if (user == null) {
-        return const WelcomeView(showContinueButton: true);
+  Stream<bool> handleAuthState() {
+    return _authService.authStateChanges.map((user) => user != null);
+  }
+
+  Future<void> handleUserRedirection(String uid, BuildContext context) async {
+    try {
+      final userDoc = await _authService.getUserData(uid);
+
+      if (!userDoc.exists) {
+        AppLogger.log('Login exitoso de administrador', prefix: 'AUTH:');
+        _navigateToHome(context);
+        return;
       }
 
-      try {
-        final userSnapshot = await _authService.getUserData(user.uid);
+      final userData = userDoc.data() as Map<String, dynamic>;
 
-        // Si no existe documento en Firestore, asumimos que es admin
-        if (userSnapshot == null || !userSnapshot.exists) {
-          AppLogger.log('Acceso de administrador: ${user.email}', prefix: 'AUTH:');
-          return const HomeView();
+      if (userData['rol'] == 'profesor') {
+        if (userData['isActive'] == false) {
+          await _authService.signOut();
+          throw 'Tu cuenta ha sido desactivada. Contacta al administrador.';
         }
-
-        final userData = userSnapshot.data() as Map<String, dynamic>;
-
-        // Verificar si el usuario es profesor
-        if (userData['rol'] == 'profesor') {
-          if (userData['isActive'] == false) {
-            AppLogger.log('Profesor desactivado intentando acceder: ${user.email}', prefix: 'AUTH:');
-            await _authService.signOut();
-            return const WelcomeView(showContinueButton: true);
-          }
-          return const StudentListView();
-        }
-
-        return const HomeView();
-      } catch (e) {
-        AppLogger.log('Error en handleAuthState: $e', prefix: 'AUTH_ERROR:');
-        await _authService.signOut();
-        return const WelcomeView(showContinueButton: true);
+        _navigateToStudentList(context);
+        return;
       }
-    });
+
+      _navigateToHome(context);
+    } catch (e) {
+      AppLogger.log('Error al obtener datos de usuario: $e', prefix: 'AUTH_ERROR:');
+      throw 'Error al obtener datos de usuario';
+    }
   }
 
   Future<void> signIn({
@@ -68,36 +58,7 @@ class AuthController {
       );
 
       if (userCredential.user != null) {
-        try {
-          final userDoc = await _firestore
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .get();
-
-          // Si no existe documento en Firestore, asumimos que es admin
-          if (!userDoc.exists) {
-            AppLogger.log('Login exitoso de administrador: ${email}', prefix: 'AUTH:');
-            Navigator.pushReplacementNamed(context, '/home');
-            return;
-          }
-
-          final userData = userDoc.data()!;
-
-          if (userData['rol'] == 'profesor') {
-            if (userData['isActive'] == false) {
-              await _authService.signOut();
-              setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
-              return;
-            }
-            Navigator.pushReplacementNamed(context, '/student_list');
-            return;
-          }
-
-          Navigator.pushReplacementNamed(context, '/home');
-        } catch (e) {
-          AppLogger.log('Error al obtener datos de usuario: $e', prefix: 'AUTH_ERROR:');
-          setError('Error al obtener datos de usuario');
-        }
+        await handleUserRedirection(userCredential.user!.uid, context);
       }
     } catch (e) {
       AppLogger.log('Error en signIn: $e', prefix: 'AUTH_ERROR:');
@@ -108,37 +69,12 @@ class AuthController {
   }
 
   Future<void> checkAuthStateAndRedirect(BuildContext context) async {
-    if (_authService.isAuthenticated) {
-      final user = _authService.currentUser;
-      if (user != null) {
-        try {
-          final userDoc = await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .get();
-
-          // Si no existe documento en Firestore, asumimos que es admin
-          if (!userDoc.exists) {
-            Navigator.pushReplacementNamed(context, '/home');
-            return;
-          }
-
-          final userData = userDoc.data()!;
-
-          if (userData['rol'] == 'profesor') {
-            if (userData['isActive'] == false) {
-              await _authService.signOut();
-              return;
-            }
-            Navigator.pushReplacementNamed(context, '/student_list');
-            return;
-          }
-
-          Navigator.pushReplacementNamed(context, '/home');
-        } catch (e) {
-          AppLogger.log('Error en checkAuthState: $e', prefix: 'AUTH_ERROR:');
-          await _authService.signOut();
-        }
+    if (_authService.isAuthenticated && _authService.currentUser != null) {
+      try {
+        await handleUserRedirection(_authService.currentUser!.uid, context);
+      } catch (e) {
+        AppLogger.log('Error en checkAuthState: $e', prefix: 'AUTH_ERROR:');
+        await signOut(context);
       }
     }
   }
@@ -146,12 +82,24 @@ class AuthController {
   Future<void> signOut(BuildContext context) async {
     try {
       await _authService.signOut();
-      Navigator.pushReplacementNamed(context, '/login');
+      _navigateToLogin(context);
     } catch (e) {
       AppLogger.log('Error en signOut: $e', prefix: 'AUTH_ERROR:');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al cerrar sesión: $e')),
       );
     }
+  }
+
+  void _navigateToHome(BuildContext context) {
+    Navigator.pushReplacementNamed(context, '/home');
+  }
+
+  void _navigateToLogin(BuildContext context) {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  void _navigateToStudentList(BuildContext context) {
+    Navigator.pushReplacementNamed(context, '/student_list');
   }
 }

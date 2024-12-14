@@ -39,14 +39,19 @@ class AppRoutes {
   }
 
   static Widget _handleAuthState() {
-    return StreamBuilder<Widget>(
+    return StreamBuilder<bool>(
       stream: AuthController().handleAuthState(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const WelcomeView(showContinueButton: false);
         }
 
-        return snapshot.data ?? const WelcomeView(showContinueButton: true);
+        if (snapshot.hasData && snapshot.data!) {
+          AuthController().checkAuthStateAndRedirect(context);
+          return const WelcomeView(showContinueButton: false);
+        }
+
+        return const WelcomeView(showContinueButton: true);
       },
     );
   }

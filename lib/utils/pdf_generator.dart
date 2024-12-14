@@ -257,7 +257,8 @@ class PdfGenerator {
     if (evaluationData.isEmpty) return pw.Container();
 
     final totalScore = evaluationData.fold<int>(0, (sum, item) => sum + (item['score'] as int));
-    final average = evaluationData.isEmpty ? 0.0 : totalScore / evaluationData.length;
+    final average100 = evaluationData.isEmpty ? 0.0 : totalScore / evaluationData.length;
+    final average20 = average100 * 0.2;
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
@@ -273,7 +274,8 @@ class PdfGenerator {
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
           pw.SizedBox(height: 8),
           _buildInfoRow('Total:', totalScore.toString()),
-          _buildInfoRow('Promedio:', average.toStringAsFixed(1)),
+          _buildInfoRow('Promedio (100):', average100.toStringAsFixed(1)),
+          _buildInfoRow('Promedio (20):', average20.toStringAsFixed(2)),
         ],
       ),
     );

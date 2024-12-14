@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../dialogs/recover_password_dialog.dart';
 import '../utils/responsive_utils.dart';
 import '../controllers/auth_controller.dart';
 
@@ -230,22 +231,7 @@ class _LoginViewState extends State<LoginView> {
       onPressed: () {
         showDialog(
           context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Recuperar Contraseña'),
-              content: const Text(
-                'Por favor, contacta al administrador del sistema para recuperar tu contraseña.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Aceptar'),
-                ),
-              ],
-            );
-          },
+          builder: (BuildContext context) => const RecoverPasswordDialog(),
         );
       },
       child: const Text(

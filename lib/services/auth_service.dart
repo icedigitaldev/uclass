@@ -1,4 +1,3 @@
-// auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
@@ -13,10 +12,9 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => currentUser != null;
-
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  Future<DocumentSnapshot?> getUserData(String uid) async {
+  Future<DocumentSnapshot> getUserData(String uid) async {
     return await _firestore.collection('users').doc(uid).get();
   }
 
@@ -25,14 +23,12 @@ class AuthService {
     required String password,
   }) async {
     try {
-      // Primero intentamos iniciar sesión directamente con Firebase Auth
       try {
         return await _auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
       } catch (authError) {
-        // Si falla, verificamos si es un usuario en Firestore
         final QuerySnapshot querySnapshot = await _firestore
             .collection('users')
             .where('email', isEqualTo: email)
@@ -41,7 +37,6 @@ class AuthService {
         if (querySnapshot.docs.isNotEmpty) {
           final userData = querySnapshot.docs.first.data() as Map<String, dynamic>;
 
-          // Verificar si el usuario es profesor y está desactivado
           if (userData['rol'] == 'profesor' && userData['isActive'] == false) {
             throw 'Tu cuenta ha sido desactivada. Contacta al administrador.';
           }
