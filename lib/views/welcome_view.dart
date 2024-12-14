@@ -43,7 +43,7 @@ class WelcomeView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Comienza tu viaje con nosotros',
+                  'Transforma la forma en que evalúas',
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.black54,
